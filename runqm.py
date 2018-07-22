@@ -15,7 +15,6 @@ from tkinter import messagebox
 import tkinter
 from bottle import SimpleTemplate, template
 
-
 def startZipAndroid():
     if not entry.get():
         messagebox.showerror(title="错误", message="请选择apk包文件")
@@ -73,10 +72,8 @@ def startZipAndroid():
     # 目录不存在则创建
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
-    downloadpath = ""
     # 遍历渠道号并创建对应渠道号的apk文件
     for line in channel_array:
-
         # 获取当前渠道号，因为从渠道文件中获得带有\n,所有strip一下
         target_channel = line.strip()
         # 创建苹果的plist文件并写入
@@ -88,7 +85,6 @@ def startZipAndroid():
         listDownLoad.append(('渠道' + target_channel + '点击下载', get_host_ip() + target_apk))
         # 拷贝建立新apk
         shutil.copy(src_apk, target_apk)
-        downloadpath = output_dir
         # zip获取新建立的apk文件
         zipped = zipfile.ZipFile(target_apk, 'a', zipfile.ZIP_DEFLATED)
 
@@ -107,24 +103,28 @@ def startZipAndroid():
     # 删除临时文件
     os.remove(src_temp_file)
     messagebox.showinfo(title="成功", message="签名成功")
-    createQRServer(downloadpath)
+    html = createHtml(listDownLoad)
+    htmlFilePath = output_dir+'download.html'
+    with open(htmlFilePath,'w',encoding='utf-8') as s:
+        s.write(html)
+    createQRServer(filepath=output_dir,html=htmlFilePath)
     #
     # # 打开指定文件夹
     # file_opt = options = {}
-    # options['initialdir'] = output_dir
+    # options['initialdir'] = output_dirL
     # options['title'] = '已生成的文件'
     # filename = filedialog.askopenfilename(**file_opt)
     # print(filename)
 
 
-def createQRServer(filepath):
+def createQRServer(filepath,html):
     server_address = ('0.0.0.0', 9999)
     SimpleHTTPRequestHandler.protocol_version = "HTTP/1.0"
-    SimpleHTTPRequestHandler.path = filepath
+    SimpleHTTPRequestHandler.path = os.path.abspath('.')
     httpd = HTTPServer(server_address, SimpleHTTPRequestHandler)
     sa = httpd.socket.getsockname()
     print("Serving HTTP on", sa[0], "port", sa[1], "...")
-    url = get_host_ip() + filepath
+    url = get_host_ip() + html
     print(url)
     image = createQr(url)
     image_resized = resize(120, 120, image)
@@ -147,9 +147,9 @@ def createHtml(listDownload):
     :return: 下载列表
     """
     # 一些我们需要展示的文章题目和内容
-    articles = [("渠道ID=123", "http://blog.csdn.net/reallocing1/article/details/51694967"),
-                ("渠道ID=223", "http://blog.csdn.net/reallocing1/article/details/51694967"),
-                ("渠道ID=323", "http://blog.csdn.net/reallocing1/article/details/51694967")]
+    # articles = [("渠道ID=123", "http://blog.csdn.net/reallocing1/article/details/51694967"),
+    #             ("渠道ID=223", "http://blog.csdn.net/reallocing1/article/details/51694967"),
+    #             ("渠道ID=323", "http://blog.csdn.net/reallocing1/article/details/51694967")]
     # 定义想要生成的Html的基本格式
     # 使用%来插入python代码
     template_demo = """
@@ -202,7 +202,7 @@ def createHtml(listDownload):
         </html>
 
         """
-    html = template(template_demo, items=articles)
+    html = template(template_demo, items=listDownload)
     return html
 
 
