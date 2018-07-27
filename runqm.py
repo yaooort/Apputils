@@ -1,6 +1,5 @@
 #!/usr/bin/python
 # coding=utf-8
-import _thread
 import multiprocessing
 import socket
 from http.server import SimpleHTTPRequestHandler, HTTPServer
@@ -322,9 +321,9 @@ def resize(w_box, h_box, pil_image):  # 参数是：要适应的窗口宽、高�
 
 
 if __name__ == '__main__':
-    root = tkinter.Tk(screenName="第一坊渠道包", baseName="第一坊渠道包", className="第一坊渠道包")
+    root = tkinter.Tk(screenName="App渠道包", baseName="App渠道包", className="App渠道包")
     root.iconbitmap("icon.ico")
-    root.title = "第一坊渠道包"
+    root.title = "App渠道包"
     # root.geometry('500x500')
     root.resizable(True, False)  # 固定窗口大小
     windowWidth = 400  # 获得当前窗口宽
@@ -333,10 +332,10 @@ if __name__ == '__main__':
     geometryParam = '%dx%d+%d+%d' % (
         windowWidth, windowHeight, (screenWidth - windowWidth) / 2, (screenHeight - windowHeight) / 2)
     root.geometry(geometryParam)  # 设置窗口大小及偏移坐标
-    # root.wm_attributes('-topmost', 1)  # 窗口置顶
+    root.wm_attributes('-topmost', 1)  # 窗口置顶
     # 创建顶部logo
     logo = tkinter.Canvas(root, width=120, height=120)
-    pil_image = Image.open('logo_red.gif')  # 以一个PIL图像对象打开  【调整待转图片格式】
+    pil_image = Image.open('logo.gif')  # 以一个PIL图像对象打开  【调整待转图片格式】
     pil_image_resized = resize(80, 80, pil_image)
     ph = ImageTk.PhotoImage(pil_image_resized)
     logo.create_image(20, 20, anchor=tkinter.NW, image=ph)
