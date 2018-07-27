@@ -18,7 +18,7 @@ from bottle import template
 
 def startZipAndroid():
     if not entry.get():
-        messagebox.showerror(title="错误", message="请选择apk包文件")
+        messagebox.showerror(title="错误", message="请选择app包文件")
         return
 
     if not default_value.get():
