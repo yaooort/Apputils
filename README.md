@@ -90,7 +90,28 @@
 ```
 
 ## 实现原理
-- 
+
+
+
+
+- *Android apk的zip包内META-INF描述文件夹内写入空文件。文件名就是我们要打的渠道包ID
+
+
+- *iOS 在ipa内选择Payload/{$APP_NAME}/_CodeSignaturre/ 下写入AppInfo.plist文件 然后读取该文件内的channel key
+
+
+## 使用区域网服务器作为下载服务器，如果要使用iOS扫描下载安装。则需要修改本地python代码 搭建本地https环境 创建CA证书安装到iPhone上
+
+## 使用Python 源码 需要安装依赖库
+
+
+
+
+
+
+
+
+
 
 
 
