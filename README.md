@@ -13,6 +13,6 @@
 -------------------
 
 ## 上效果图
-<img src="https://github.com/smuyyh/ImageSelector/blob/master/screenshot/screen_1.png?raw=true" width=280/>
+<img src="https://github.com/yaooort/Apputils/blob/master/Jietu20180727-103944.jpg?raw=true" width=280/>
 
 
