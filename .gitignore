@@ -1,2 +1,4 @@
 *.apk
 *.html
+build/
+__pycache__/

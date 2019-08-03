@@ -1,19 +1,16 @@
 #!/usr/bin/python
 # coding=utf-8
-import multiprocessing
-import socket
-from http.server import SimpleHTTPRequestHandler, HTTPServer
+import base64
+from tkinter.font import Font
 
-import qrcode as qrcode
-from PIL import Image, ImageTk
 from biplist import *
 import os
 import shutil
 import zipfile
-from tkinter import filedialog
-from tkinter import messagebox
+from tkinter import filedialog, messagebox
 import tkinter
-from bottle import template
+
+from icon import img
 
 
 def startZipAndroid():
@@ -68,8 +65,6 @@ def startZipAndroid():
     f = open(src_temp_file, 'w')
     f.close()
 
-    # 创建数组下载对象
-    listDownLoad = []
     # 目录不存在则创建
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
@@ -83,42 +78,6 @@ def startZipAndroid():
         }
         # 拼接对应渠道号的apk
         target_apk = output_dir + src_apk_name + "-" + target_channel + src_apk_extension
-        if src_apk_extension == '.apk':
-            # android的超链接
-            listDownLoad.append(('渠道' + target_channel + '点击下载', get_host_ip() + target_apk))
-        elif src_apk_extension == '.ipa':
-            # ios itms-services://?action=download-manifest&url=https://www.fs4ss.com/lib/vshow1.5.4.plist
-            # 1.先生成plist
-            plistItem = {
-                'items': [
-                    {
-                        'assets': [
-                            {
-                                'kind': 'software-package',
-                                'url': get_host_ip() + target_apk
-                            },
-                            {
-                                'kind': 'display-image',
-                                'url': ''
-                            },
-                            {
-                                'kind': 'full-size-image',
-                                'url': ''
-                            }
-                        ],
-                        'metadata': {
-                            'bundle-identifier': '',
-                            'bundle-version': '2',
-                            'kind': 'software',
-                            'title': ''
-                        }
-                    }
-                ]
-            }
-            plistItemFileName = output_dir + target_channel + 'do.plist'
-            writePlist(plistItem, plistItemFileName, )
-            listDownLoad.append(('渠道' + target_channel + '点击下载',
-                                 'itms-services://?action=download-manifest&url=' + get_host_ip() + plistItemFileName))
         # 拷贝建立新apk
         shutil.copy(src_apk, target_apk)
         # zip获取新建立的apk文件
@@ -131,7 +90,7 @@ def startZipAndroid():
             zipped.write(src_temp_file, target_channel_file)
         elif src_apk_extension == '.ipa':
             writePlist(plist, src_temp_file)
-            target_channel_file = zipped.namelist()[2] + src_temp_file
+            target_channel_file = zipped.namelist()[1]+'/_CodeSignature/' + src_temp_file
             zipped.write(src_temp_file, target_channel_file)
         # 关闭zip流
         zipped.close()
@@ -139,44 +98,8 @@ def startZipAndroid():
     # 删除临时文件
     os.remove(src_temp_file)
     messagebox.showinfo(title="成功", message="签名成功")
-    html = createHtml(listDownLoad)
-    htmlFilePath = output_dir + 'download.html'
-    with open(htmlFilePath, 'w', encoding='utf-8') as s:
-        s.write(html)
-    createQRServer(filepath=output_dir, html=htmlFilePath)
-
-
-def createQRServer(filepath, html):
-    server_address = ('0.0.0.0', 9999)
-    SimpleHTTPRequestHandler.protocol_version = "HTTP/1.0"
-    SimpleHTTPRequestHandler.path = os.path.abspath('.') + filepath
-
-    httpd = HTTPServer(server_address, SimpleHTTPRequestHandler)
-    # httpd.socket = ssl.wrap_socket(httpd.socket, server_side=True,
-    #                                certfile='server.pem')
-    sa = httpd.socket.getsockname()
-    print("Serving HTTP on", sa[0], "port", sa[1], "...")
-    url = get_host_ip() + html
-    print(url)
-    image = createQr(url)
-    image_resized = resize(120, 120, image)
-    phimage = ImageTk.PhotoImage(image_resized)
-    labelFex = tkinter.Label(root, text="扫描二维码下载安装测试", foreground='red')
-    labelFex.pack_configure()
-    btnShow = tkinter.Button(root, text="打开生成文件目录", foreground='red', command=lambda: showFiles(filepath))
-    btnShow.pack_configure()
-    # 下载二维码
-    qeCanvas = tkinter.Canvas(root, width=120, height=120)
-    qeCanvas.create_image(0, 0, anchor=tkinter.NW, image=phimage)
-    qeCanvas.pack_configure(anchor=tkinter.CENTER)
-
-    # 起线程会卡一下，进程就不会
-    # _thread.start_new_thread(startServer, (httpd,))
-    # # 创建进程，target：调用对象，args：传参数到对象
-    p = multiprocessing.Process(target=startServer, args=(httpd,))
-    p.start()  # 开启进程
-
-
+    btnShow = tkinter.Button(root, text="打开生成文件目录", foreground='blue', command=lambda: showFiles(output_dir))
+    btnShow.pack_configure(pady=15)
 
 
 def showFiles(path):
@@ -185,99 +108,6 @@ def showFiles(path):
     options['initialdir'] = path
     options['title'] = '已生成的文件'
     filedialog.askopenfilename(**options)
-
-
-def createHtml(listDownload):
-    """
-    创建一个html
-    :return: 下载列表
-    """
-    # 一些我们需要展示的文章题目和内容
-    # articles = [("渠道ID=123", "http://blog.csdn.net/reallocing1/article/details/51694967"),
-    #             ("渠道ID=223", "http://blog.csdn.net/reallocing1/article/details/51694967"),
-    #             ("渠道ID=323", "http://blog.csdn.net/reallocing1/article/details/51694967")]
-    # 定义想要生成的Html的基本格式
-    # 使用%来插入python代码
-    template_demo = """
-         <!DOCTYPE html>
-        <html lang="en">
-        <head>
-        <meta charset="UTF-8">
-        <title>下载App</title>
-        <style>
-            ul {
-                width: 100%;
-                height: auto;
-                color: #fff;
-                text-align: center;
-                padding: 0;
-            }
-            li {
-                width: 100%;
-                background-color: cadetblue;
-                border-radius: 20px;
-                list-style-type: none;
-            }
-            a {
-                padding: 30px;
-                margin: 10px;
-                display: block;
-                text-decoration: none;
-                color: white;
-            }
-            div{
-                padding: 30px 50px;
-            }
-        </style>
-        </head>
-        <body>
-        <div>
-            <ul>
-                % for title,link in items:
-                <li>
-                    <a href={{link}}>{{title}}</a>
-                </li>
-                %end
-            </ul>
-        </div>
-        </body>
-        </html>
-        """
-    html = template(template_demo, items=listDownload)
-    return html
-
-
-def startServer(httpd):
-    httpd.serve_forever()
-
-
-def get_host_ip():
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(('8.8.8.8', 80))
-        ip = s.getsockname()[0]
-    finally:
-        s.close()
-
-    return "http://" + ip + ":9999/"
-
-
-def createQr(str=""):
-    """
-    生成二维码
-    :return:
-    """
-    qr = qrcode.QRCode(
-        version=1,
-        error_correction=qrcode.constants.ERROR_CORRECT_L,
-        box_size=20,
-        border=4,
-    )
-    qr.add_data(str)
-    qr.make(fit=True)
-
-    img = qr.make_image()
-    return img
 
 
 def selectFile():
@@ -304,38 +134,24 @@ def center_window():
     root.geometry('+%d+%d' % (x, y))
 
 
-# 对一个pil_image对象进行缩放，让它在一个矩形框内，还能保持比例
-
-def resize(w_box, h_box, pil_image):  # 参数是：要适应的窗口宽、高、Image.open后的图片
-    w, h = pil_image.size  # 获取图像的原始大小
-    f1 = 1.0 * w_box / w
-    f2 = 1.0 * h_box / h
-    factor = min([f1, f2])
-    width = int(w * factor)
-    height = int(h * factor)
-    return pil_image.resize((width, height), Image.ANTIALIAS)
-
-
 if __name__ == '__main__':
-    root = tkinter.Tk(screenName="App渠道包", baseName="App渠道包", className="App渠道包")
-    root.iconbitmap("icon.ico")
-    root.title = "App渠道包"
+    root = tkinter.Tk(screenName="四虎渠道包", baseName="四虎渠道包", className="四虎渠道包")
+    # root.iconbitmap("icon.ico")
+    tmp = open("tmp.ico", "wb+")
+    tmp.write(base64.b64decode(img))
+    tmp.close()
+    root.iconbitmap("tmp.ico")
+    os.remove("tmp.ico")
+    root.title = "四虎渠道包"
     # root.geometry('500x500')
     root.resizable(True, False)  # 固定窗口大小
-    windowWidth = 400  # 获得当前窗口宽
-    windowHeight = 500  # 获得当前窗口高
+    windowWidth = 260  # 获得当前窗口宽
+    windowHeight = 300  # 获得当前窗口高
     screenWidth, screenHeight = root.maxsize()  # 获得屏幕宽和高
     geometryParam = '%dx%d+%d+%d' % (
         windowWidth, windowHeight, (screenWidth - windowWidth) / 2, (screenHeight - windowHeight) / 2)
     root.geometry(geometryParam)  # 设置窗口大小及偏移坐标
     root.wm_attributes('-topmost', 1)  # 窗口置顶
-    # 创建顶部logo
-    logo = tkinter.Canvas(root, width=120, height=120)
-    pil_image = Image.open('logo.gif')  # 以一个PIL图像对象打开  【调整待转图片格式】
-    pil_image_resized = resize(80, 80, pil_image)
-    ph = ImageTk.PhotoImage(pil_image_resized)
-    logo.create_image(20, 20, anchor=tkinter.NW, image=ph)
-    logo.pack(side=tkinter.TOP)
 
     frame_main = tkinter.Frame(root, borderwidth=10)
 
@@ -347,8 +163,8 @@ if __name__ == '__main__':
     labelPath = tkinter.Entry(frame1, textvariable=entry)
     labelPath.pack_configure(anchor=tkinter.CENTER)
     # 按钮
-    selectFileBtn = tkinter.Button(frame1, text="选取Apk或ipa包", foreground='red', command=selectFile)
-    selectFileBtn.pack_configure(side=tkinter.RIGHT)
+    selectFileBtn = tkinter.Button(frame1, text="选取Apk或ipa包", foreground='black', command=selectFile)
+    selectFileBtn.pack_configure(side=tkinter.RIGHT, pady=5)
     frame1.pack_configure(anchor=tkinter.NW)
     frame2 = tkinter.Frame(frame_main, borderwidth=10)
     # 代理ID输入
@@ -357,14 +173,14 @@ if __name__ == '__main__':
     inputDaili = tkinter.Entry(frame2, textvariable=default_value)
     inputDaili.pack_configure(anchor=tkinter.CENTER)
     # 提示文字
-    labelFex = tkinter.Label(frame2, text="代理Id,多个使用英文 , 分隔", foreground='red')
-    labelFex.pack_configure(side=tkinter.RIGHT)
+    labelFex = tkinter.Label(frame2, text="代理Id,多个使用英文 , 分隔", foreground='black')
+    labelFex.pack_configure(side=tkinter.RIGHT, pady=5)
     frame2.pack_configure(anchor=tkinter.NW)
 
     frame_main.pack_configure(anchor=tkinter.CENTER)
     # 运行按钮
-    runQi = tkinter.Button(root, text="签名", command=startZipAndroid)
-    runQi.pack_configure()
-
+    helv15 = Font(family='Helvetica', size=15, weight='bold')
+    runQi = tkinter.Button(root, text="签名", foreground='red', font=helv15, command=startZipAndroid)
+    runQi.pack_configure(ipadx=10)
     # 渲染界面
     root.mainloop()
