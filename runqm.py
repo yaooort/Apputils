@@ -14,14 +14,13 @@ import zipfile
 from tkinter import filedialog
 from tkinter import messagebox
 import tkinter
-from bottle import SimpleTemplate, template
+from bottle import template
 
 
 def startZipAndroid():
     if not entry.get():
         messagebox.showerror(title="错误", message="请选择app安装包文件")
         return
-
     if not default_value.get():
         messagebox.showerror(title="错误", message="请输入代理Id")
         return
@@ -84,7 +83,42 @@ def startZipAndroid():
         }
         # 拼接对应渠道号的apk
         target_apk = output_dir + src_apk_name + "-" + target_channel + src_apk_extension
-        listDownLoad.append(('渠道' + target_channel + '点击下载', get_host_ip() + target_apk))
+        if src_apk_extension == '.apk':
+            # android的超链接
+            listDownLoad.append(('渠道' + target_channel + '点击下载', get_host_ip() + target_apk))
+        elif src_apk_extension == '.ipa':
+            # ios itms-services://?action=download-manifest&url=https://www.fs4ss.com/lib/vshow1.5.4.plist
+            # 1.先生成plist
+            plistItem = {
+                'items': [
+                    {
+                        'assets': [
+                            {
+                                'kind': 'software-package',
+                                'url': get_host_ip() + target_apk
+                            },
+                            {
+                                'kind': 'display-image',
+                                'url': ''
+                            },
+                            {
+                                'kind': 'full-size-image',
+                                'url': ''
+                            }
+                        ],
+                        'metadata': {
+                            'bundle-identifier': '',
+                            'bundle-version': '2',
+                            'kind': 'software',
+                            'title': ''
+                        }
+                    }
+                ]
+            }
+            plistItemFileName = output_dir + target_channel + 'do.plist'
+            writePlist(plistItem, plistItemFileName, )
+            listDownLoad.append(('渠道' + target_channel + '点击下载',
+                                 'itms-services://?action=download-manifest&url=' + get_host_ip() + plistItemFileName))
         # 拷贝建立新apk
         shutil.copy(src_apk, target_apk)
         # zip获取新建立的apk文件
@@ -110,20 +144,25 @@ def startZipAndroid():
     with open(htmlFilePath, 'w', encoding='utf-8') as s:
         s.write(html)
     createQRServer(filepath=output_dir, html=htmlFilePath)
-    #
-    # # 打开指定文件夹
-    # file_opt = options = {}
-    # options['initialdir'] = output_dirL
-    # options['title'] = '已生成的文件'
-    # filename = filedialog.askopenfilename(**file_opt)
-    # print(filename)
+
+
+#
+# # 打开指定文件夹
+# file_opt = options = {}
+# options['initialdir'] = output_dirL
+# options['title'] = '已生成的文件'
+# filename = filedialog.askopenfilename(**file_opt)
+# print(filename)
 
 
 def createQRServer(filepath, html):
     server_address = ('0.0.0.0', 9999)
     SimpleHTTPRequestHandler.protocol_version = "HTTP/1.0"
-    SimpleHTTPRequestHandler.path = os.path.abspath('.')
+    SimpleHTTPRequestHandler.path = os.path.abspath('.') + filepath
+
     httpd = HTTPServer(server_address, SimpleHTTPRequestHandler)
+    # httpd.socket = ssl.wrap_socket(httpd.socket, server_side=True,
+    #                                certfile='server.pem')
     sa = httpd.socket.getsockname()
     print("Serving HTTP on", sa[0], "port", sa[1], "...")
     url = get_host_ip() + html
@@ -133,19 +172,35 @@ def createQRServer(filepath, html):
     phimage = ImageTk.PhotoImage(image_resized)
     labelFex = tkinter.Label(root, text="扫描二维码下载安装测试", foreground='red')
     labelFex.pack_configure()
+    btnShow = tkinter.Button(root, text="打开生成文件目录", foreground='red', command=lambda: showFiles(filepath))
+    btnShow.pack_configure()
     # 下载二维码
     qeCanvas = tkinter.Canvas(root, width=120, height=120)
     qeCanvas.create_image(0, 0, anchor=tkinter.NW, image=phimage)
     qeCanvas.pack_configure(anchor=tkinter.CENTER)
-    root.mainloop()
+
     httpd = HTTPServer(('localhost', 443), SimpleHTTPRequestHandler)
-    httpd.socket = ssl.wrap_socket(httpd.socket, server_side=True,
-                                   certfile='yourpemfile.pem')
-    httpd.serve_forever()
-    # 创建进程，target：调用对象，args：传参数到对象
-    httpd.serve_forever()
+    # httpd.socket = ssl.wrap_socket(httpd.socket, server_side=True,
+    #                                certfile='yourpemfile.pem')
+    # # 创建进程，target：调用对象，args：传参数到对象
+    # httpd.serve_forever()
     # p = multiprocessing.Process(target=startServer, args=(httpd,))
     # p.start()  # 开启进程
+    # 起线程会卡一下，进程就不会
+    # _thread.start_new_thread(startServer, (httpd,))
+    # # 创建进程，target：调用对象，args：传参数到对象
+    p = multiprocessing.Process(target=startServer, args=(httpd,))
+    p.start()  # 开启进程
+
+    root.mainloop()
+
+
+def showFiles(path):
+    # 打开指定文件夹
+    file_opt = options = {}
+    options['initialdir'] = path
+    options['title'] = '已生成的文件'
+    filedialog.askopenfilename(**options)
 
 
 def createHtml(listDownload):
@@ -283,10 +338,9 @@ def resize(w_box, h_box, pil_image):  # 参数是：要适应的窗口宽、高�
 
 
 if __name__ == '__main__':
-    root = tkinter.Tk(screenName="四虎影視分包器", baseName="分包器", className="分包器")
+    root = tkinter.Tk(screenName="App渠道包", baseName="App渠道包", className="App渠道包")
     root.iconbitmap("icon.ico")
-    root.title = "四虎出品"
-    # root.geometry('500x500')
+    root.title = "App渠道包"
     root.resizable(True, False)  # 固定窗口大小
     windowWidth = 320  # 获得当前窗口宽
     windowHeight = 500  # 获得当前窗口高
@@ -297,7 +351,7 @@ if __name__ == '__main__':
     root.wm_attributes('-topmost', 1)  # 窗口置顶
     # 创建顶部logo
     logo = tkinter.Canvas(root, width=120, height=120)
-    pil_image = Image.open('logo_red.gif')  # 以一个PIL图像对象打开  【调整待转图片格式】
+    pil_image = Image.open('logo.gif')  # 以一个PIL图像对象打开  【调整待转图片格式】
     pil_image_resized = resize(80, 80, pil_image)
     ph = ImageTk.PhotoImage(pil_image_resized)
     logo.create_image(20, 20, anchor=tkinter.NW, image=ph)
