@@ -2,6 +2,7 @@
 # coding=utf-8
 import multiprocessing
 import socket
+import ssl
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 
 import qrcode as qrcode
@@ -15,9 +16,10 @@ from tkinter import messagebox
 import tkinter
 from bottle import SimpleTemplate, template
 
+
 def startZipAndroid():
     if not entry.get():
-        messagebox.showerror(title="错误", message="请选择apk包文件")
+        messagebox.showerror(title="错误", message="请选择app安装包文件")
         return
 
     if not default_value.get():
@@ -104,10 +106,10 @@ def startZipAndroid():
     os.remove(src_temp_file)
     messagebox.showinfo(title="成功", message="签名成功")
     html = createHtml(listDownLoad)
-    htmlFilePath = output_dir+'download.html'
-    with open(htmlFilePath,'w',encoding='utf-8') as s:
+    htmlFilePath = output_dir + 'download.html'
+    with open(htmlFilePath, 'w', encoding='utf-8') as s:
         s.write(html)
-    createQRServer(filepath=output_dir,html=htmlFilePath)
+    createQRServer(filepath=output_dir, html=htmlFilePath)
     #
     # # 打开指定文件夹
     # file_opt = options = {}
@@ -117,7 +119,7 @@ def startZipAndroid():
     # print(filename)
 
 
-def createQRServer(filepath,html):
+def createQRServer(filepath, html):
     server_address = ('0.0.0.0', 9999)
     SimpleHTTPRequestHandler.protocol_version = "HTTP/1.0"
     SimpleHTTPRequestHandler.path = os.path.abspath('.')
@@ -136,9 +138,14 @@ def createQRServer(filepath,html):
     qeCanvas.create_image(0, 0, anchor=tkinter.NW, image=phimage)
     qeCanvas.pack_configure(anchor=tkinter.CENTER)
     root.mainloop()
+    httpd = HTTPServer(('localhost', 443), SimpleHTTPRequestHandler)
+    httpd.socket = ssl.wrap_socket(httpd.socket, server_side=True,
+                                   certfile='yourpemfile.pem')
+    httpd.serve_forever()
     # 创建进程，target：调用对象，args：传参数到对象
-    p = multiprocessing.Process(target=startServer, args=(httpd,))
-    p.start()  # 开启进程
+    httpd.serve_forever()
+    # p = multiprocessing.Process(target=startServer, args=(httpd,))
+    # p.start()  # 开启进程
 
 
 def createHtml(listDownload):
@@ -207,7 +214,7 @@ def createHtml(listDownload):
 
 
 def startServer(httpd):
-    httpd.serve_forever()
+    pass
 
 
 def get_host_ip():
@@ -276,12 +283,12 @@ def resize(w_box, h_box, pil_image):  # 参数是：要适应的窗口宽、高�
 
 
 if __name__ == '__main__':
-    root = tkinter.Tk(screenName="第一坊渠道包", baseName="第一坊渠道包", className="第一坊渠道包")
+    root = tkinter.Tk(screenName="四虎影視分包器", baseName="分包器", className="分包器")
     root.iconbitmap("icon.ico")
-    root.title = "第一坊渠道包"
+    root.title = "四虎出品"
     # root.geometry('500x500')
     root.resizable(True, False)  # 固定窗口大小
-    windowWidth = 400  # 获得当前窗口宽
+    windowWidth = 320  # 获得当前窗口宽
     windowHeight = 500  # 获得当前窗口高
     screenWidth, screenHeight = root.maxsize()  # 获得屏幕宽和高
     geometryParam = '%dx%d+%d+%d' % (
@@ -306,7 +313,7 @@ if __name__ == '__main__':
     labelPath = tkinter.Entry(frame1, textvariable=entry)
     labelPath.pack_configure(anchor=tkinter.CENTER)
     # 按钮
-    selectFileBtn = tkinter.Button(frame1, text="选取Apk或ipa包", foreground='red', command=selectFile)
+    selectFileBtn = tkinter.Button(frame1, text="选取Apk或ipa包", foreground='black', command=selectFile)
     selectFileBtn.pack_configure(side=tkinter.RIGHT)
     frame1.pack_configure(anchor=tkinter.NW)
     frame2 = tkinter.Frame(frame_main, borderwidth=10)
@@ -316,7 +323,7 @@ if __name__ == '__main__':
     inputDaili = tkinter.Entry(frame2, textvariable=default_value)
     inputDaili.pack_configure(anchor=tkinter.CENTER)
     # 提示文字
-    labelFex = tkinter.Label(frame2, text="代理Id,多个使用英文 , 分隔", foreground='red')
+    labelFex = tkinter.Label(frame2, text="代理Id,多个使用英文 , 分隔", foreground='black')
     labelFex.pack_configure(side=tkinter.RIGHT)
     frame2.pack_configure(anchor=tkinter.NW)
 
