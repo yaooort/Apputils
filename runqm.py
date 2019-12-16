@@ -52,18 +52,21 @@ def startZipAndroid():
     if src_apk_extension == '.apk':
         # 空文件 便于写入此空文件到apk包中作为channel文件
         src_temp_file = 'temp_.txt'
+        # 创建一个空文件（不存在则创建）
+        f = open(src_temp_file, 'w')
+        f.close()
         # 创建生成目录,与文件名相关
         output_dir = 'apks_' + src_apk_name + '/'
     elif src_apk_extension == '.ipa':
-        src_temp_file = 'AppInfo.plist'
+        src_temp_file = 'PkgInfo'
+        # 创建一个空文件（不存在则创建）
+        f = open(src_temp_file, 'w')
+        f.close()
         # 创建生成目录,与文件名相关
         output_dir = 'ipas_' + src_apk_name + '/'
     else:
         messagebox.showerror(title="错误", message="请选择.apk或者.ipa文件")
         return
-    # 创建一个空文件（不存在则创建）
-    f = open(src_temp_file, 'w')
-    f.close()
 
     # 目录不存在则创建
     if not os.path.exists(output_dir):
@@ -72,10 +75,7 @@ def startZipAndroid():
     for line in channel_array:
         # 获取当前渠道号，因为从渠道文件中获得带有\n,所有strip一下
         target_channel = line.strip()
-        # 创建苹果的plist文件并写入
-        plist = {
-            'channel': target_channel
-        }
+
         # 拼接对应渠道号的apk
         target_apk = output_dir + src_apk_name + "-" + target_channel + src_apk_extension
         # 拷贝建立新apk
@@ -89,9 +89,11 @@ def startZipAndroid():
             # 写入渠道信息
             zipped.write(src_temp_file, target_channel_file)
         elif src_apk_extension == '.ipa':
-            writePlist(plist, src_temp_file)
-            target_channel_file = zipped.namelist()[1]+'/_CodeSignature/' + src_temp_file
-            zipped.write(src_temp_file, target_channel_file)
+            with open(src_temp_file, 'w') as f:
+                f.write(target_channel)
+            for name in zipped.namelist():
+                if name.endswith('PkgInfo'):
+                    zipped.write(src_temp_file, name)
         # 关闭zip流
         zipped.close()
 

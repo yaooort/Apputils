@@ -2,3 +2,4 @@
 *.html
 build/
 __pycache__/
+dist
