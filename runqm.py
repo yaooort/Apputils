@@ -2,18 +2,50 @@
 # coding=utf-8
 import base64
 from tkinter.font import Font
-
-from biplist import *
 import os
 import shutil
 import zipfile
 from tkinter import filedialog, messagebox
 import tkinter
-
+from biplist import *
 from icon import img
+import plistlib
+import re
+
+
+# 获取plist路径
+def find_path(zip_file, pattern_str):
+    name_list = zip_file.namelist()
+    pattern = re.compile(pattern_str)
+    for path in name_list:
+        m = pattern.match(path)
+        if m is not None:
+            return m.group()
+
+
+# 获取ipa信息
+def get_ipa_info(plist_info):
+    print('软件名称: %s' % str(plist_info['CFBundleDisplayName']))
+    print('软件标识: %s' % str(plist_info['CFBundleIdentifier']))
+    print('软件版本: %s' % str(plist_info['CFBundleShortVersionString']))
+    print('支持版本: %s' % str(plist_info['MinimumOSVersion']))
+
+
+# 解压ipa获取并信息
+def unzip_ipa(path):
+    ipa_file = zipfile.ZipFile(path)
+    plist_path = find_path(ipa_file, 'Payload/[^/]*.app/Info.plist')
+    # 读取plist内容
+    plist_data = ipa_file.read(plist_path)
+    # 解析plist内容
+    plist_detail_info = plistlib.loads(plist_data)
+    # 获取plist信息
+    get_ipa_info(plist_detail_info)
+    return plist_detail_info
 
 
 def startZipAndroid():
+    global ipa_info
     if not entry.get():
         messagebox.showerror(title="错误", message="请选择app包文件")
         return
@@ -64,6 +96,8 @@ def startZipAndroid():
         f.close()
         # 创建生成目录,与文件名相关
         output_dir = 'ipas_' + src_apk_name + '/'
+        # 获取ipa信息
+        ipa_info = unzip_ipa(src_apk)
     else:
         messagebox.showerror(title="错误", message="请选择.apk或者.ipa文件")
         return
@@ -75,7 +109,10 @@ def startZipAndroid():
     for line in channel_array:
         # 获取当前渠道号，因为从渠道文件中获得带有\n,所有strip一下
         target_channel = line.strip()
-
+        # 创建苹果的plist文件并写入
+        plist = {
+            'channel': target_channel
+        }
         # 拼接对应渠道号的apk
         target_apk = output_dir + src_apk_name + "-" + target_channel + src_apk_extension
         # 拷贝建立新apk
@@ -89,6 +126,34 @@ def startZipAndroid():
             # 写入渠道信息
             zipped.write(src_temp_file, target_channel_file)
         elif src_apk_extension == '.ipa':
+            # ios itms-services://?action=download-manifest&url=https://www.fs4ss.com/lib/vshow1.5.4.plist
+            # 1.先生成plist https://ddul.oss-cn-hangzhou.aliyuncs.com/android/android-3832.apk
+            plist_item = {
+                'items': [
+                    {
+                        'assets': [
+                            {
+                                'kind': 'software-package',
+                                'url': "https://ddul.oss-cn-hangzhou.aliyuncs.com/iOS/" + src_apk_name + "-" + target_channel + src_apk_extension
+                            },
+                            {
+                                'kind': 'display-image',
+                                'needs-shine': True,
+                                'url': "https://ddul.oss-cn-hangzhou.aliyuncs.com/icon.png"
+                            }
+                        ],
+                        'metadata': {
+                            'bundle-identifier': str(ipa_info['CFBundleIdentifier']),
+                            'bundle-version': str(ipa_info['CFBundleShortVersionString']),
+                            'kind': 'software',
+                            'subtitle': 'App Subtitle',
+                            'title': str(ipa_info['CFBundleDisplayName'])
+                        }
+                    }
+                ]
+            }
+            plist_item_file_name = output_dir + target_channel + '.plist'
+            writePlist(plist_item, plist_item_file_name)
             with open(src_temp_file, 'w') as f:
                 f.write(target_channel)
             for name in zipped.namelist():
@@ -137,23 +202,23 @@ def center_window():
 
 
 if __name__ == '__main__':
-    root = tkinter.Tk(screenName="四虎渠道包", baseName="四虎渠道包", className="四虎渠道包")
+    root = tkinter.Tk(screenName="动动娱乐渠道包", baseName="动动娱乐渠道包", className="动动娱乐渠道包")
     # root.iconbitmap("icon.ico")
     tmp = open("tmp.ico", "wb+")
     tmp.write(base64.b64decode(img))
     tmp.close()
     root.iconbitmap("tmp.ico")
     os.remove("tmp.ico")
-    root.title = "四虎渠道包"
+    root.title = "动动娱乐渠道包"
     # root.geometry('500x500')
-    root.resizable(True, False)  # 固定窗口大小
-    windowWidth = 260  # 获得当前窗口宽
+    root.resizable(False, False)  # 固定窗口大小
+    windowWidth = 460  # 获得当前窗口宽
     windowHeight = 300  # 获得当前窗口高
     screenWidth, screenHeight = root.maxsize()  # 获得屏幕宽和高
     geometryParam = '%dx%d+%d+%d' % (
         windowWidth, windowHeight, (screenWidth - windowWidth) / 2, (screenHeight - windowHeight) / 2)
     root.geometry(geometryParam)  # 设置窗口大小及偏移坐标
-    root.wm_attributes('-topmost', 1)  # 窗口置顶
+    # root.wm_attributes('-topmost', 1)  # 窗口置顶
 
     frame_main = tkinter.Frame(root, borderwidth=10)
 
@@ -162,27 +227,28 @@ if __name__ == '__main__':
     entry = tkinter.StringVar()
     entry.set("")
     # 文件选择输入
-    labelPath = tkinter.Entry(frame1, textvariable=entry)
+    labelPath = tkinter.Entry(frame1, textvariable=entry, width=400)
     labelPath.pack_configure(anchor=tkinter.CENTER)
     # 按钮
-    selectFileBtn = tkinter.Button(frame1, text="选取Apk或ipa包", foreground='black', command=selectFile)
+    selectFileBtn = tkinter.Button(frame1, text="选取Apk或ipa包", bg="#ffffff", foreground='#333333', command=selectFile)
     selectFileBtn.pack_configure(side=tkinter.RIGHT, pady=5)
     frame1.pack_configure(anchor=tkinter.NW)
     frame2 = tkinter.Frame(frame_main, borderwidth=10)
     # 代理ID输入
     default_value = tkinter.StringVar()
     default_value.set('')
-    inputDaili = tkinter.Entry(frame2, textvariable=default_value)
+    inputDaili = tkinter.Entry(frame2, textvariable=default_value, width=400)
     inputDaili.pack_configure(anchor=tkinter.CENTER)
     # 提示文字
-    labelFex = tkinter.Label(frame2, text="代理Id,多个使用英文 , 分隔", foreground='black')
+    labelFex = tkinter.Label(frame2, text="代理Id,多个使用英文 , 分隔", foreground='#f761a1')
     labelFex.pack_configure(side=tkinter.RIGHT, pady=5)
     frame2.pack_configure(anchor=tkinter.NW)
 
     frame_main.pack_configure(anchor=tkinter.CENTER)
     # 运行按钮
     helv15 = Font(family='Helvetica', size=15, weight='bold')
-    runQi = tkinter.Button(root, text="签名", foreground='red', font=helv15, command=startZipAndroid)
+    runQi = tkinter.Button(root, text="签名", bg="#0396ff", foreground='#ffffff', font=helv15,
+                           command=startZipAndroid)
     runQi.pack_configure(ipadx=10)
     # 渲染界面
     root.mainloop()
