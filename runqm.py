@@ -126,20 +126,21 @@ def startZipAndroid():
             # 写入渠道信息
             zipped.write(src_temp_file, target_channel_file)
         elif src_apk_extension == '.ipa':
-            # ios itms-services://?action=download-manifest&url=https://www.fs4ss.com/lib/vshow1.5.4.plist
-            # 1.先生成plist https://ddul.oss-cn-hangzhou.aliyuncs.com/android/android-3832.apk
+            # android https://h5.dongdongyule.com/android/android-3836.apk
+            # ios itms-services://?action=download-manifest&url=https://h5.dongdongyule.com/iOS/3836.plist
+            # 1.先生成plist https://h5.dongdongyule.com/android/android-3832.apk
             plist_item = {
                 'items': [
                     {
                         'assets': [
                             {
                                 'kind': 'software-package',
-                                'url': "https://ddul.oss-cn-hangzhou.aliyuncs.com/iOS/" + src_apk_name + "-" + target_channel + src_apk_extension
+                                'url': "https://h5.dongdongyule.com/iOS/" + src_apk_name + "-" + target_channel + src_apk_extension
                             },
                             {
                                 'kind': 'display-image',
                                 'needs-shine': True,
-                                'url': "https://ddul.oss-cn-hangzhou.aliyuncs.com/icon.png"
+                                'url': "https://h5.dongdongyule.com/icon.png"
                             }
                         ],
                         'metadata': {
@@ -156,9 +157,21 @@ def startZipAndroid():
             writePlist(plist_item, plist_item_file_name)
             with open(src_temp_file, 'w') as f:
                 f.write(target_channel)
-            for name in zipped.namelist():
-                if name.endswith('PkgInfo'):
-                    zipped.write(src_temp_file, name)
+            target_channel_file = "Payload/" + ipa_info['CFBundleDisplayName'] + ".app/PkgInfo"
+            # a = zipped.read(target_channel_file).decode('utf-8')
+            # print(a)
+            zipped.write(src_temp_file, target_channel_file)
+
+            # print(target_channel_file)
+            # for name in zipped.namelist():
+            #     if name.endswith(".app/"+src_temp_file):
+            #         # 读取proxy.txt
+            #         print(name)
+
+            # zipped.writestr(name, target_channel)
+            # # 读取proxy.txt
+            # a = zipped.read(name).decode('utf-8')
+            # print(a)
         # 关闭zip流
         zipped.close()
 
