@@ -8,4 +8,4 @@ Pillow==8.1.1
 py2app==0.14
 qrcode==6.0
 six==1.11.0
-bottle==0.12.13
+bottle==0.12.19
