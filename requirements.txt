@@ -4,7 +4,7 @@ future==0.16.0
 macholib==1.9
 modulegraph==0.16
 pefile==2017.11.5
-Pillow==8.3.2
+Pillow==9.0.0
 py2app==0.14
 qrcode==6.0
 six==1.11.0
